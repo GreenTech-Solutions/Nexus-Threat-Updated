@@ -1,7 +1,0 @@
-- ZPE Core Quality feature. ( Quality is currently unavailable )
-- Balancing the new Nexus thread.
-- More images on the homepage.
-- And instructions in the Game Info section to help players understand the game mechanics.
-
-And who knows what else I’ll come up with in the future::::::
-This list is just a rough outline of ideas, nothing final. If you think of anything that’s missing, please feel free to send me a message :)
