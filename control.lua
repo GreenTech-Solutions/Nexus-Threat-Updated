@@ -213,8 +213,10 @@ script.on_init(function()
     
     -- BRIDGE TO STABILIZER FILE: Initialize independent storage
     Stabilizer.init_storage()
-    
+
     rebuild_entity_lists()
+    -- A save that had the original Nexus-Threat: its stabilizers keep their tier (see stabilizer.lua)
+    Stabilizer.restore_global_tier()
     for _, player in pairs(game.players) do
         create_toggle_button(player)
     end
