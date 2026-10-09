@@ -94,5 +94,30 @@ data:extend({
     default_value = 10,
     minimum_value = 1,
     maximum_value = 60
-  } 
+  },
+  -- Storm tuning. The defaults keep the original behaviour; a balance mod can change them in its settings-updates.
+  {
+    type = "double-setting",
+    name = "nt-instability-half-life",	-- HOURS UNTIL INSTABILITY HALVES ON ITS OWN (0 = NO DECAY)
+    setting_type = "runtime-global",
+    default_value = 0,
+    minimum_value = 0,
+    maximum_value = 1000
+  },
+  {
+    type = "double-setting",
+    name = "nt-lightning-chance",		-- CHANCE (%) OF A LIGHTNING ATTEMPT ADDED PER 1 % OF INSTABILITY
+    setting_type = "runtime-global",
+    default_value = 1.0,
+    minimum_value = 0,
+    maximum_value = 10
+  },
+  {
+    type = "int-setting",
+    name = "nt-lightning-attempts",		-- MAX LIGHTNING ATTEMPTS PER TICK FROM 50 % INSTABILITY
+    setting_type = "runtime-global",
+    default_value = 3,
+    minimum_value = 1,
+    maximum_value = 3
+  }
 })
