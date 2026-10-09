@@ -32,7 +32,9 @@ local function load_nexus_config()
 	DRILL_UPDATE_INTERVAL = settings.global["nt-drill-interval"].value,	-- PERFORMANCE: CALCULATE DRILLS EVERY X TICKS (1-60)
     
 	WILD_LIGHTNING_CHANCE = 15,     -- MAX CHANCE FOR WILD LIGHTNING (0-100)
-    WILD_LIGHTNING_COUNT = 5        -- MAX ATTEMPTS FOR WILD LIGHTNING PER TICK
+    WILD_LIGHTNING_COUNT = 5,       -- MAX ATTEMPTS FOR WILD LIGHTNING PER TICK
+
+    SHIELD_STEP_TICKS = 10          -- PERFORMANCE: THE SHIELD IS RECALCULATED EVERY X TICKS, OVER THE STABILIZERS ONLY
 
    }
 end
@@ -61,10 +63,13 @@ end)
 -- NEW: This feature scans the planet (OPTIMIZED FOR MEGABASES!)
 local function rebuild_entity_lists()
     local surface = game.get_surface(CONFIG.PLANET_NAME)
+    -- The shield step reads the stabilizers from their own list; this leaves it empty when there is no surface yet
+    Stabilizer.rescan(surface)
     if not (surface and surface.valid) then return end
 
     storage.drills = {}
     storage.assemblers = {}
+    storage.assemblers_dirty = nil -- the fresh list holds no dead entries
     storage.combinators = {}
     storage.lightning_targets = {}
 
@@ -117,6 +122,8 @@ local function on_entity_created(event)
             if registrierte_entity.surface.name == CONFIG.PLANET_NAME then
                 storage.assemblers = storage.assemblers or {}
                 table.insert(storage.assemblers, registrierte_entity)
+                -- The shield step looks only at this list of stabilizers (also the morphed replacement)
+                Stabilizer.track(registrierte_entity)
             end
             return -- Stop here for the stabilizer so it doesn't get double-processed below
         end
@@ -183,6 +190,13 @@ script.on_event({
     local ent = event.entity
     if ent and ent.valid then
         Stabilizer.on_destroy(ent)
+
+        -- An assembler lost on Nexus leaves a dead anchor of the lightning in storage.assemblers. The entity is
+        -- still valid inside this event, so only a flag is raised; prune_assemblers removes the dead anchors in the
+        -- next shield step.
+        if ent.type == "assembling-machine" and ent.surface.name == CONFIG.PLANET_NAME then
+            storage.assemblers_dirty = true
+        end
     end
 end)
 
@@ -230,7 +244,101 @@ script.on_event(defines.events.on_gui_click, function(event)
     end
 end)
 
+-- SHIELD CALCULATION
+-- Runs every SHIELD_STEP_TICKS ticks over storage.stabilizers only, instead of every tick over all
+-- assemblers on Nexus: only shield stabilizers can run "nexus-stabilization-process".
+
+-- Shield energy that one stabilizer made during the last step
+local function stabilizer_gain(machine, unit_number, step_seconds)
+    local status = machine.status
+    if status ~= defines.entity_status.working and status ~= defines.entity_status.low_power then
+        return 0.0
+    end
+    local recipe = machine.get_recipe()
+    if not (recipe and recipe.name == "nexus-stabilization-process") then
+        return 0.0
+    end
+
+    -- 1. Crafts done so far as a fraction: finished crafts plus the progress of the running one
+    local crafts = machine.products_finished + machine.crafting_progress
+
+    -- 2. The same value from the previous step (stored per machine). It is kept while the machine is paused
+    -- (no power): its progress stands still then, so the first step after the pause counts what was made since.
+    local last_crafts = storage.stabilizer_crafts[unit_number]
+    storage.stabilizer_crafts[unit_number] = crafts
+    if not last_crafts then
+        return 0.0 -- the first look at a machine only sets this baseline
+    end
+
+    -- 3. How far the machine got since the previous step. A craft that completed in between is counted by
+    -- products_finished; if that does not count this recipe, the progress bar just wrapped around and the delta
+    -- is negative, so the finished craft is added back. (At most one craft completes per step:
+    -- crafting_speed / recipe.energy * step_seconds is far below 1.)
+    local progress_delta = crafts - last_crafts
+    if progress_delta < 0 then
+        progress_delta = progress_delta + 1
+    end
+
+    -- 4. How far it SHOULD get at 100% power: (crafting_speed / recipe duration) per second
+    local expected_progress = machine.crafting_speed / recipe.energy * step_seconds
+    if expected_progress <= 0 then
+        return 0.0
+    end
+
+    -- 5. The continuous power factor: actual progress divided by expected progress, within [0, 1]
+    local power_factor = math.max(0.0, math.min(1.0, progress_delta / expected_progress))
+
+    -- CALCULATION: The shield charges continuously!
+    -- If the C++ engine throttles the recipe by 40% due to a power shortage, exactly 40% less shield power is generated.
+    return CONFIG.RECIPE_BONUS_RATE * machine.crafting_speed * power_factor * step_seconds
+end
+
+-- The per-tick loop over all assemblers that this replaces also dropped the destroyed ones from storage.assemblers,
+-- the anchor pool 2 of the lightning. Now the removal events (see above) only raise storage.assemblers_dirty, and the
+-- next shield step compacts the list once. Without that, after a mass removal a big part of the strike attempts
+-- would draw dead anchors and be lost. (A removal that raises no event is still dropped lazily, when a strike draws it.)
+local function prune_assemblers()
+    storage.assemblers_dirty = nil
+    local list = storage.assemblers
+    if not list then return end
+
+    local size = #list
+    local kept = 0
+    for i = 1, size do
+        local ent = list[i]
+        if ent and ent.valid then
+            kept = kept + 1
+            list[kept] = ent
+        end
+    end
+    for i = size, kept + 1, -1 do
+        list[i] = nil
+    end
+end
+
+local function update_shield()
+    local step_seconds = CONFIG.SHIELD_STEP_TICKS / 60
+    local shield = storage.shield_energy or 0
+
+    for unit_number, machine in pairs(storage.stabilizers) do
+        if machine.valid then
+            shield = shield + stabilizer_gain(machine, unit_number, step_seconds)
+        else
+            -- Destroyed without an event (script, deleted surface)
+            Stabilizer.forget(unit_number)
+        end
+    end
+
+    storage.shield_energy = math.min(CONFIG.MAX_SHIELD, shield)
+end
+
 script.on_event(defines.events.on_tick, function(event)
+
+    -- A save from before the stabilizer list existed gets its list here. Changing only the script of the same mod
+    -- version raises no on_configuration_changed.
+    if not storage.stabilizers then
+        Stabilizer.rescan(game.get_surface(CONFIG.PLANET_NAME))
+    end
 
     -- BRIDGE TO STABILIZER FILE: Safely morph machines outside the GUI tick
     if storage.stabilizer_system and storage.stabilizer_system.needs_morph then
@@ -262,63 +370,11 @@ script.on_event(defines.events.on_tick, function(event)
         end
     end
 
-    -- 2.1 SHIELD CALCULATION (Assemblers)
-    -- Runs every tick for maximum precision when intercepting lightning bolts
-    for i = #storage.assemblers, 1, -1 do
-        local machine = storage.assemblers[i]
-        if machine and machine.valid then
-            if machine.status == defines.entity_status.working or machine.status == defines.entity_status.low_power then
-                local recipe = machine.get_recipe()
-                if recipe and recipe.name == "nexus-stabilization-process" then
-                    
-                    -- 1. We retrieve the current progress of the recipe (value ranging from 0.0 to 1.0)
-                    local current_progress = machine.crafting_progress
-                    
-                    -- 2. We retrieve the previous tick's progress (stored in a table)
-                    storage.last_machine_progress = storage.last_machine_progress or {}
-                    local machine_unit_number = machine.unit_number or i -- If there is no unit_number, we use the index
-                    local last_progress = storage.last_machine_progress[machine_unit_number] or 0
-                    
-                    -- 3. We calculate how far the bar has moved in THIS tick (the delta)
-                    local progress_delta = current_progress - last_progress
-                    
-                    -- If the recipe finished in this tick and starts over from the beginning, the delta is negative. 
-                    -- In that case, we simply set the value to the maximum to account for calculation errors.
-                    if progress_delta < 0 then
-                        progress_delta = (machine.crafting_speed / 60) / recipe.energy
-                    end
-                    
-                    -- 4. We calculate how fast the machine SHOULD run at 100% power:
-                    -- (crafting_speed / 60 ticks) divided by the recipe duration in seconds
-                    local expected_progress_per_tick = (machine.crafting_speed / 60) / recipe.energy
-                    
-                    -- 5. The continuous power factor: Actual progress divided by expected progress!
-                    local power_factor = 1.0
-                    if expected_progress_per_tick > 0 then
-                        power_factor = math.min(1.0, progress_delta / expected_progress_per_tick)
-                    end
-                    
-                    -- Safety net: When progress is extremely slow or the machine is idle
-                    if progress_delta == 0 or machine.status == defines.entity_status.no_power then
-                        power_factor = 0.0
-                    end
-                    
-                    -- Save the value for the next tick to memory
-                    storage.last_machine_progress[machine_unit_number] = current_progress
-                    
-                    -- CALCULATION: The shield charges continuously!
-                    -- If the C++ engine throttles the recipe by 40% due to a power shortage, exactly 40% less shield power is generated.
-                    local bonus = (CONFIG.RECIPE_BONUS_RATE / 60) * machine.crafting_speed * power_factor
-                    storage.shield_energy = math.min(CONFIG.MAX_SHIELD, (storage.shield_energy or 0) + bonus)
-                end
-            else
-                -- When the machine stops running, we reset its progress memory
-                if storage.last_machine_progress then
-                    local machine_unit_number = machine.unit_number or i
-                    storage.last_machine_progress[machine_unit_number] = nil
-                end
-            end
-        else table.remove(storage.assemblers, i) end
+    -- 2.1 SHIELD CALCULATION (Stabilizers)
+    -- Every SHIELD_STEP_TICKS ticks over the stabilizers only, instead of every tick over all assemblers (see update_shield)
+    if event.tick % CONFIG.SHIELD_STEP_TICKS == 0 then
+        update_shield()
+        if storage.assemblers_dirty then prune_assemblers() end
     end
 
     -- SHIELD REGENERATION: outside an active storm (no storm, or only the warning phase) the shield regenerates
@@ -413,27 +469,6 @@ script.on_event(defines.events.on_tick, function(event)
         end
 		
 		
-        -- ========================================================================
-
-        -- ========================================================================
-        -- INDEPENDENT FILTER: Register stabilizers directly from your assembler list
-        -- This is NOT a surface scan! It only reads the local lua table.
-        -- ========================================================================
-        Stabilizer.init_storage()
-        if storage.assemblers then
-            for _, asm in pairs(storage.assemblers) do
-                if asm and asm.valid and string.find(asm.name, "^shield%-stabilizer") then
-                    -- If this stabilizer is not yet tracked in our independent system, add it!
-                    if not storage.stabilizer_system.machines[asm.unit_number] then
-                        local tier = tonumber(string.match(asm.name, "%d+$")) or 1
-                        storage.stabilizer_system.machines[asm.unit_number] = {
-                            entity = asm,
-                            tier = tier
-                        }
-                    end
-                end
-            end
-        end
         -- ========================================================================
 
         -- We retrieve the current global tier state from memory
