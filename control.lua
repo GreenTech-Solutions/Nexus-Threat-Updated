@@ -30,6 +30,10 @@ local function load_nexus_config()
     
     RECIPE_BONUS_RATE = settings.global["nt-recipe-bonus"].value,		-- CHANGE SHIELD LOADING SPEED: 10.0 = 10 Schild-Energie pro Sekunde
 	DRILL_UPDATE_INTERVAL = settings.global["nt-drill-interval"].value,	-- PERFORMANCE: CALCULATE DRILLS EVERY X TICKS (1-60)
+
+    INSTABILITY_HALF_LIFE = settings.global["nt-instability-half-life"].value * 3600,	-- SECONDS UNTIL INSTABILITY HALVES ON ITS OWN (0 = NO DECAY)
+    LIGHTNING_CHANCE_PER_INSTAB = settings.global["nt-lightning-chance"].value,	-- CHANCE (%) OF A LIGHTNING ATTEMPT ADDED PER 1 % OF INSTABILITY
+    LIGHTNING_MAX_ATTEMPTS = settings.global["nt-lightning-attempts"].value,	-- MAX LIGHTNING ATTEMPTS PER TICK FROM 50 % INSTABILITY
     
 	WILD_LIGHTNING_CHANCE = 15,     -- MAX CHANCE FOR WILD LIGHTNING (0-100)
     WILD_LIGHTNING_COUNT = 5,       -- MAX ATTEMPTS FOR WILD LIGHTNING PER TICK
@@ -39,6 +43,7 @@ local function load_nexus_config()
    }
 end
 local CONFIG = load_nexus_config()
+local LN2 = 0.6931471805599453 -- math.log(2), for the instability decay
 
 -- NEW: Feature for creating the main button (Secure Sprite Path)
 local function create_toggle_button(player)
@@ -359,6 +364,13 @@ script.on_event(defines.events.on_tick, function(event)
     -- Runs every X ticks based on DRILL_UPDATE_INTERVAL for better performance
     if event.tick % CONFIG.DRILL_UPDATE_INTERVAL == 0 then
         local factor = CONFIG.DRILL_UPDATE_INTERVAL
+
+        -- Instability decays exponentially when the setting "nt-instability-half-life" is above 0:
+        -- I <- I * 2^(-dt / half-life), dt in seconds. math.exp instead of ^ because Factorio replaces exp and log
+        -- with versions that give the same result on every platform.
+        if CONFIG.INSTABILITY_HALF_LIFE > 0 then
+            storage.nexus_charge = (storage.nexus_charge or 0) * math.exp(-LN2 * (factor / 60) / CONFIG.INSTABILITY_HALF_LIFE)
+        end
         for i = #storage.drills, 1, -1 do
             local d = storage.drills[i]
             if d and d.valid then
@@ -613,17 +625,18 @@ script.on_event(defines.events.on_tick, function(event)
         local storm_multiplier = storage.storm_multiplier or 1.0
         
         -- PERFORMANCE: We calculate the number of lightning strikes for this tick
-        -- At 100% instability, we attempt up to 3 lightning strikes per tick (180 per second!)
+        -- From 50% instability, we attempt up to "nt-lightning-attempts" (default 3) lightning strikes per tick (180 per second!)
         local blitz_attempts = 1
         if instability >= 50 then 
-            blitz_attempts = math.random(1, 3) 
+            blitz_attempts = math.random(1, CONFIG.LIGHTNING_MAX_ATTEMPTS)
         end
 
         for a = 1, blitz_attempts do
             -- GLOBAL CHECK
             -- The roll is continuous so that a multiplier below 1 is not rounded away; with the whole-number chance
-            -- floor(5 + instability) it gives exactly the old math.random(1, 100) <= 5 + instability at multiplier 1.
-            if math.random() * 100 < math.floor(5 + instability) * storm_multiplier then
+            -- floor(5 + k * instability), k = "nt-lightning-chance" (default 1), it gives exactly the old
+            -- math.random(1, 100) <= 5 + instability at k = 1 and multiplier 1.
+            if math.random() * 100 < math.floor(5 + CONFIG.LIGHTNING_CHANCE_PER_INSTAB * instability) * storm_multiplier then
                 -- PERFORMANCE:
                 local pool_selector = math.random(1, 3)
                 local current_pool = storage.drills
