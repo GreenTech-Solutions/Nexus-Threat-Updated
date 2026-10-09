@@ -607,6 +607,10 @@ script.on_event(defines.events.on_tick, function(event)
     -- 5. BLITZ LOGIC (ORIGINAL MASS + PERFORMANCE FIX)
     if storage.storm_timer > 0 and not storage.is_warning then
         local instability = storage.nexus_charge or 0
+
+        -- The storm multiplier (set by other mods through the remote interface "nexus-threat" below) scales only
+        -- the CHANCES of lightning, the regular and the wild ones; not the damage, the storm duration or the instability.
+        local storm_multiplier = storage.storm_multiplier or 1.0
         
         -- PERFORMANCE: We calculate the number of lightning strikes for this tick
         -- At 100% instability, we attempt up to 3 lightning strikes per tick (180 per second!)
@@ -617,7 +621,9 @@ script.on_event(defines.events.on_tick, function(event)
 
         for a = 1, blitz_attempts do
             -- GLOBAL CHECK
-            if math.random(1, 100) <= (5 + instability) then
+            -- The roll is continuous so that a multiplier below 1 is not rounded away; with the whole-number chance
+            -- floor(5 + instability) it gives exactly the old math.random(1, 100) <= 5 + instability at multiplier 1.
+            if math.random() * 100 < math.floor(5 + instability) * storm_multiplier then
                 -- PERFORMANCE:
                 local pool_selector = math.random(1, 3)
                 local current_pool = storage.drills
@@ -635,6 +641,7 @@ script.on_event(defines.events.on_tick, function(event)
                         }
                         
                         surface.create_entity{name = "lightning", position = strike_pos}
+                        storage.regular_strikes = (storage.regular_strikes or 0) + 1
                         
                         -- DAMAGE LOGIC WITH IMPACT
                         local damage_amount = CONFIG.BASE_DAMAGE + (instability * CONFIG.DAMAGE_INC_PER_INSTAB)
@@ -680,7 +687,8 @@ script.on_event(defines.events.on_tick, function(event)
             local current_chance = (CONFIG.WILD_LIGHTNING_CHANCE / 100) * instability
             if instability < 10 then current_chance = 5 end 
 
-            if math.random(1, 100) <= current_chance then
+            -- Same continuous roll as above: floor(current_chance) percent at multiplier 1, as before
+            if math.random() * 100 < math.floor(current_chance) * storm_multiplier then
                 local chunk = surface.get_random_chunk()
                 if chunk then
                     surface.create_entity{
@@ -690,6 +698,7 @@ script.on_event(defines.events.on_tick, function(event)
                             y = chunk.y * 32 + math.random(0, 31)
                         }
                     }
+                    storage.wild_strikes = (storage.wild_strikes or 0) + 1
                 end
             end
         end
@@ -755,6 +764,42 @@ commands.add_command("nexus-refresh", "Initialisiert alle Listen der Nexus-Mod n
     rebuild_entity_lists()
     game.print("Nexus-Listen wurden erfolgreich neu geladen!")
 end)
+
+
+-- REMOTE INTERFACE "nexus-threat", for other mods (for example weaker storms after a boss falls)
+remote.add_interface("nexus-threat", {
+    -- Scales only the CHANCES of lightning, regular and wild; not the damage, the storm duration or the
+    -- instability. Default 1.0.
+    set_storm_multiplier = function(multiplier)
+        if type(multiplier) ~= "number" or not (multiplier >= 0 and multiplier < math.huge) then
+            error("nexus-threat.set_storm_multiplier: expected a finite number >= 0, got " .. tostring(multiplier))
+        end
+        storage.storm_multiplier = multiplier
+    end,
+
+    -- Snapshot of the threat state. Reads only, so it is safe to call at any time.
+    get_state = function()
+        local stabilizers = 0
+        local machines = storage.stabilizer_system and storage.stabilizer_system.machines or {}
+        for _, data in pairs(machines) do
+            if data.entity and data.entity.valid then stabilizers = stabilizers + 1 end
+        end
+
+        return {
+            instability = storage.nexus_charge or 0,
+            shield = storage.shield_energy or 0,
+            max_shield = CONFIG.MAX_SHIELD,
+            storm_active = (storage.storm_timer or 0) > 0 and not storage.is_warning,
+            storm_warning = (storage.storm_timer or 0) > 0 and storage.is_warning == true,
+            storm_timer = storage.storm_timer or 0,        -- seconds
+            storm_multiplier = storage.storm_multiplier or 1.0,
+            stabilizers = stabilizers,                     -- stabilizers known to the stabilizer system
+            -- counters since the start of the game
+            regular_strikes = storage.regular_strikes or 0,
+            wild_strikes = storage.wild_strikes or 0
+        }
+    end
+})
 
 
 
