@@ -1,4 +1,19 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2026-10-09
+  Info:
+    - Published as Nexus-Threat-Updated, a fork of Nexus-Threat 1.0.6 by Karu_Kiruna
+  Features:
+    - Map settings for the storms: instability half-life, lightning chance per instability, lightning attempts per tick
+    - Remote interface nexus-threat: other mods can scale the lightning chances and read the threat state
+    - Support Factorio 2.1
+  Optimizations:
+    - The shield is computed every 10 ticks over the stabilizers only, instead of every tick over every machine on Nexus
+  Bugfixes:
+    - A save that switches from Nexus-Threat keeps the tier of its shield stabilizers
+    - Debug commands (reset_nexus, sturm_start, sturm_start_timer, sturm_stop, set_nexus, check_storage, nexus-refresh) are for admins only
+    - The shield regeneration setting had no effect; the shield now regenerates outside storms
+---------------------------------------------------------------------------------------------------
 Version: 1.0.6
 Date: 01.07.2026
   Bugfixes:
