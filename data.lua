@@ -88,7 +88,7 @@ data:extend({
 	},
 	energy_required = 60.0,
 --	localised_description = "-----------------",
-	category = "crafting-with-fluid",
+	categories = {"crafting-with-fluid"},
 	subgroup = "omega-threat",
 	order = "y-a",
 	--always_show_made_in = true,
@@ -102,7 +102,7 @@ data:extend({
   {
     type = "recipe",
     name = "nexus-stabilization-process",
-    category = "nexus-stabilization",
+    categories = {"nexus-stabilization"},
     icons = {
       {
         icon = "__base__/graphics/icons/signal/signal_blue.png",
