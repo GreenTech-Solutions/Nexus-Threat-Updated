@@ -321,6 +321,12 @@ script.on_event(defines.events.on_tick, function(event)
         else table.remove(storage.assemblers, i) end
     end
 
+    -- SHIELD REGENERATION: outside an active storm (no storm, or only the warning phase) the shield regenerates
+    -- by itself at the "nt-shield-regen" rate (shield energy per second)
+    if not ((storage.storm_timer or 0) > 0 and not storage.is_warning) then
+        storage.shield_energy = math.min(CONFIG.MAX_SHIELD, (storage.shield_energy or 0) + CONFIG.SHIELD_REGEN_RATE / 60)
+    end
+
 
 
 
