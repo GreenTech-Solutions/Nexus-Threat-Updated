@@ -190,6 +190,8 @@ script.on_event({
     defines.events.on_entity_died,
     defines.events.script_raised_destroy
 }, function(event)
+    -- (all four events have entity; the checker does not see it through the list of events)
+    ---@diagnostic disable-next-line: undefined-field
     local ent = event.entity
     if ent and ent.valid then
         Stabilizer.on_destroy(ent)
@@ -848,7 +850,7 @@ script.on_event(defines.events.on_gui_closed, function(event)
     -- Check if the closed GUI was an entity and if it is a constant combinator
     if event.entity and event.entity.valid and event.entity.name == "constant-combinator" then
         local entity = event.entity
-        local control = entity.get_control_behavior()
+        local control = entity.get_control_behavior() --[[@as LuaConstantCombinatorControlBehavior?]]
         if not control then return end
 
         -- Check all sections and slots to see if our custom signals are being used
