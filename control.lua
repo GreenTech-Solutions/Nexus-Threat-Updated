@@ -48,7 +48,7 @@ local function create_toggle_button(player)
             name = "nexus_toggle_button",
             sprite = "nexus-button-sprite", -- inside date.lua on top
             style = "mod_gui_button",
-            tooltip = "Planet Status"
+            tooltip = {"nexus-mod.planet-status"}
         }
     end
 end
@@ -706,12 +706,25 @@ end)
 
 
 -- COMMANDS
-commands.add_command("reset_nexus", "Setzt die Nexus-Instabilität auf 0", function()
+-- The debug commands below changed the storm and the instability for whoever typed them: they are for admins (and
+-- the server console) only.
+local function admin_only(handler)
+    return function(event)
+        local player = event.player_index and game.get_player(event.player_index)
+        if player and not player.admin then
+            player.print({"nexus-mod.cmd-admin-only"})
+            return
+        end
+        handler(event)
+    end
+end
+
+commands.add_command("reset_nexus", "Setzt die Nexus-Instabilität auf 0", admin_only(function()
     storage.nexus_charge = 0
     game.print({"nexus-mod.cmd-reset"})
-end)
+end))
 
-commands.add_command("sturm_start", "Löst sofort ein Energie-Event (Sturm) aus", function()
+commands.add_command("sturm_start", "Löst sofort ein Energie-Event (Sturm) aus", admin_only(function()
     local instability = storage.nexus_charge or 50
     -- We estimate the duration of the storm
     storage.storm_timer = CONFIG.STORM_DURATION_BASE + math.ceil(instability * CONFIG.STORM_DURATION_MULT)
@@ -720,26 +733,26 @@ commands.add_command("sturm_start", "Löst sofort ein Energie-Event (Sturm) aus"
     storage.is_warning = false 
     
     game.print({"nexus-mod.cmd-storm-manual"}, {1, 0.2, 0.2})
-end)
+end))
 
 
-commands.add_command("sturm_start_timer", "Löst sofort ein Energie-Event (Sturm) mit Vorwarnung aus", function()
+commands.add_command("sturm_start_timer", "Löst sofort ein Energie-Event (Sturm) mit Vorwarnung aus", admin_only(function()
     -- Simulates the random lead time (120–600 seconds)
     storage.storm_timer = math.random(120, 600) 
     storage.is_warning = true 
     
     -- Displays the message in the chat (uses locale)
     game.print({"nexus-mod.msg-detected", storage.storm_timer}, {1, 0.8, 0})
-end)
+end))
 
 
 
-commands.add_command("sturm_stop", "Beendet den aktuellen Sturm sofort", function()
+commands.add_command("sturm_stop", "Beendet den aktuellen Sturm sofort", admin_only(function()
     storage.storm_timer = 0
     game.print({"nexus-mod.cmd-storm-stop"}, {0, 1, 0})
-end)
+end))
 
-commands.add_command("set_nexus", "Set instability (0-100)", function(event)
+commands.add_command("set_nexus", "Set instability (0-100)", admin_only(function(event)
     local eingabe = tonumber(event.parameter)
     if not eingabe or eingabe < 0 or eingabe > 100 then
         game.print("Error: Invalid value. Please enter a number between 0 and 100.")
@@ -747,21 +760,21 @@ commands.add_command("set_nexus", "Set instability (0-100)", function(event)
     end
     storage.nexus_charge = eingabe
     game.print("Nexus-instability set to " .. storage.nexus_charge .. "%")
-end)
+end))
 
 
-commands.add_command("check_storage", "Zeigt die Anzahl der gespeicherten Objekte", function()
+commands.add_command("check_storage", "Zeigt die Anzahl der gespeicherten Objekte", admin_only(function()
     local d = #storage.drills
     local a = #storage.assemblers
     local z = #storage.lightning_targets
     game.print("Speicher-Check: Bohrer: " .. d .. " | Maschinen: " .. a .. " | Blitz-Ziele: " .. z)
-end)
+end))
 
 -- Konsolen-Befehl: /nexus-refresh
-commands.add_command("nexus-refresh", "Initialisiert alle Listen der Nexus-Mod neu", function()
+commands.add_command("nexus-refresh", "Initialisiert alle Listen der Nexus-Mod neu", admin_only(function()
     rebuild_entity_lists()
     game.print("Nexus-Listen wurden erfolgreich neu geladen!")
-end)
+end))
 
 
 -- REMOTE INTERFACE "nexus-threat", for other mods (for example weaker storms after a boss falls)
