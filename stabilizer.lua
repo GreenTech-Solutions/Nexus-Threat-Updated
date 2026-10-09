@@ -42,6 +42,23 @@ function Stabilizer.rescan(surface)
     end
 end
 
+-- A save that switches to this mod from another mod name (the original Nexus-Threat) keeps the stabilizers on the map
+-- but not the storage of the old mod: the slider tier would start at 1 again, and the next stabilizer built or the next
+-- slider move would turn them all into tier 1. Called from on_init after rescan(), it takes the tier back from the
+-- stabilizers that stand (they all have the slider tier; if not, the highest wins).
+function Stabilizer.restore_global_tier()
+    Stabilizer.init_storage()
+    local tier
+    for _, data in pairs(storage.stabilizer_system.machines) do
+        if data.entity and data.entity.valid and (not tier or data.tier > tier) then
+            tier = data.tier
+        end
+    end
+    if tier then
+        storage.stabilizer_system.global_tier = tier
+    end
+end
+
 -- A stabilizer was built on the Nexus surface (after on_built, which may have swapped it for another tier)
 function Stabilizer.track(ent)
     if not storage.stabilizers then
