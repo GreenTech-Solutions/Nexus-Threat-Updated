@@ -15,7 +15,15 @@ is in [changelog.txt](changelog.txt).
 ## Switching a save from Nexus-Threat
 
 Prototype and setting names are unchanged. The state of the script starts anew under the new mod name: the
-stabilizers are found again on the Nexus surface, and the instability and the shield start from 0.
+stabilizers are found again on the Nexus surface, the stabilizer tier is taken from them, and the instability and the
+shield start from 0.
+
+## Remote interface `nexus-threat`
+
+- `set_storm_multiplier(m)`: scales the lightning chances (regular and wild), a finite number >= 0, default 1.0. It
+  does not change the damage, the storm duration or the instability.
+- `get_state()`: instability, shield and its maximum, storm state and timer, multiplier, stabilizer count, strike
+  counters.
 
 ## License
 
