@@ -13,7 +13,7 @@ data:extend({
   {
     type = "sprite",
     name = "nexus-button-sprite", -- Ein eindeutiger interner Name
-    filename = "__Nexus-Graphics__/graphics/other/button-icon.png",
+    filename = "__Nexus-Graphics-Updated__/graphics/other/button-icon.png",
     width = 64,  -- Hier die echte Breite deines PNGs eintragen
     height = 64, -- Hier die echte Höhe deines PNGs eintragen
     flags = {"icon"}
@@ -42,7 +42,7 @@ data:extend({
 	type = "item",
 	stack_size = 1,
 	weight = 20*kg,
-	icon = "__Nexus-Graphics__/graphics/items/shield-stabilizer.png",
+	icon = "__Nexus-Graphics-Updated__/graphics/items/shield-stabilizer.png",
 	icon_size = 64,
 	subgroup = "omega-threat",
 	order = "y-a",
@@ -144,7 +144,7 @@ data:extend({
   {
     type = "technology",
     name = "nexus-storm-prediction",
-    icon = "__Nexus-Graphics__/graphics/tech/nexus-storm-prediction.png", 
+    icon = "__Nexus-Graphics-Updated__/graphics/tech/nexus-storm-prediction.png", 
     icon_size = 256,
     effects = {}, -- Does not unlock any recipes, as it is purely a "script unlock"
     prerequisites = {"omega-components"},
@@ -188,7 +188,7 @@ data:extend({
     order = "b",
     indent = 0,
     -- Thumbnail
-    small_example_image = "__Nexus-Graphics__/graphics/other/button-icon.png",
+    small_example_image = "__Nexus-Graphics-Updated__/graphics/other/button-icon.png",
   }
 })
 
@@ -217,7 +217,7 @@ data:extend({
   {
     type = "virtual-signal",
     name = "shield_energy",
-    icon = "__Nexus-Graphics__/graphics/other/shield-signal.png",
+    icon = "__Nexus-Graphics-Updated__/graphics/other/shield-signal.png",
     icon_size = 64,
     subgroup = "virtual-signal-letter",
     order = "a[custom]-a[shield]"
@@ -226,7 +226,7 @@ data:extend({
   {
     type = "virtual-signal",
     name = "nexus_charge",
-    icon = "__Nexus-Graphics__/graphics/other/instability-signal.png",
+    icon = "__Nexus-Graphics-Updated__/graphics/other/instability-signal.png",
     icon_size = 64,
     subgroup = "virtual-signal-letter",
     order = "a[custom]-b[nexus]"

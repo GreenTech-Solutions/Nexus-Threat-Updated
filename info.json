@@ -1,13 +1,15 @@
 {
-  "name": "Nexus-Threat",
+  "name": "Nexus-Threat-Updated",
   "version": "1.0.6",
-  "title": "Nexus Threat",
-  "author": "Karu_Kiruna",
+  "title": "Nexus Threat (2.1)",
+  "author": "Karu_Kiruna, updated by Alex Green",
+  "homepage": "https://github.com/GreenTech-Solutions/Nexus-Threat-Updated",
   "dependencies": [
   "base >= 2.1.0",
-  "space-age >= 2.1.0"
+  "space-age >= 2.1.0",
+  "! Nexus-Threat"
   ],
   "space_travel_required": true,
-  "description": "Nexus Addon",
+  "description": "Nexus Addon: storms, instability and the shield on Nexus.\nNexus-Threat by Karu_Kiruna, updated for Factorio 2.1 until the original has a 2.1 release. Prototype and setting names are unchanged, so a save with Nexus-Threat can switch to this mod.",
   "factorio_version": "2.1"
 }

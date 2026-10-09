@@ -8,7 +8,7 @@ local sounds = require("__base__.prototypes.entity.sounds")
 local base_stabilizer = {
     name = "shield-stabilizer-1", -- Internal name for Level 1
     type = "assembling-machine",
-    icon = "__Nexus-Graphics__/graphics/items/shield-stabilizer.png",
+    icon = "__Nexus-Graphics-Updated__/graphics/items/shield-stabilizer.png",
     icon_size = 64,
     flags = {"placeable-neutral", "placeable-player", "player-creation"},
     place_result = "shield-stabilizer", -- When placed from the inventory, this item is placed
@@ -32,7 +32,7 @@ local base_stabilizer = {
     
     graphics_set = {
         animation = {
-            filename = "__Nexus-Graphics__/graphics/entity/shield-stabilizer-animation.png",
+            filename = "__Nexus-Graphics-Updated__/graphics/entity/shield-stabilizer-animation.png",
             width = 1024,
             height = 1024,
             line_length = 4,
