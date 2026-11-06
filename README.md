@@ -5,6 +5,9 @@
 > for Factorio 2.1 and published as `Nexus-Threat-Updated`. All credit for the mod goes to Karu_Kiruna.
 > It is a stopgap: once the original has a 2.1 release, this fork is deprecated.
 
+**Deprecated:** Karu_Kiruna released [Nexus-Threat](https://mods.factorio.com/mod/Nexus-Threat) for Factorio 2.1 with everything this fork had.
+Use it instead; this fork gets no more updates. To move a save: turn off Nexus-Updated, Nexus-Threat-Updated and Nexus-Graphics-Updated, and turn on Nexus, Nexus-Threat and Nexus-Graphics. Buildings and research stay; the shield stabilizers start at tier 1 again, and the instability, the shield and the storm timer start from zero. Outside storms the shield regenerates only with the map setting "Passive shield regeneration".
+
 The storms, instability and shield of [Nexus-Updated](https://github.com/GreenTech-Solutions/Nexus-Updated). It comes
 as a dependency of Nexus-Updated; its strings are in the locale of Nexus-Updated, as in the original.
 
