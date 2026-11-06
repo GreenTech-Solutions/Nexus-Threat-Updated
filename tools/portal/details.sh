@@ -17,6 +17,7 @@ fields=(
   -F "mod=$mod"
   -F "title=$(info title)"
   -F "summary=Deprecated: use Nexus-Threat by Karu_Kiruna, which has a Factorio 2.1 release with everything this fork had."
+  -F "deprecated=true"
   -F "description=<$here/description.md"
   -F "category=content"
   -F "tags=planets"
